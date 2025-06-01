@@ -5,15 +5,23 @@ YELLOW='\033[1;33m'
 RED='\033[1;31m'
 NC='\033[0m'
 
-SYSTEM_TYPE="aarch64-darwin"
-FLAKE_SYSTEM="darwinConfigurations.${SYSTEM_TYPE}.system"
+# Check if device name was provided
+if [ -z "$1" ]; then
+    echo "${RED}Error: Device name required${NC}"
+    echo "${YELLOW}Usage: nix run .#build <device-name>${NC}"
+    echo "${YELLOW}Example: nix run .#build odin${NC}"
+    exit 1
+fi
+
+DEVICE_NAME="$1"
+shift  # Remove device name from arguments
 
 export NIXPKGS_ALLOW_UNFREE=1
 
-echo "${YELLOW}Starting build...${NC}"
-nix --extra-experimental-features 'nix-command flakes' build .#$FLAKE_SYSTEM $@
+echo "${YELLOW}Starting build for device: ${DEVICE_NAME}...${NC}"
+nix --extra-experimental-features 'nix-command flakes' build .#darwinConfigurations.${DEVICE_NAME}.system $@
 
 echo "${YELLOW}Cleaning up...${NC}"
 unlink ./result
 
-echo "${GREEN}Switch to new generation complete!${NC}"
+echo "${GREEN}Build complete!${NC}"

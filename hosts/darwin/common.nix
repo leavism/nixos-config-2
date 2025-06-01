@@ -1,4 +1,4 @@
-{ agenix, config, pkgs, ... }:
+{ agenix, config, pkgs, deviceName, ... }:
 
 let user = "leavism"; in
 
@@ -31,8 +31,6 @@ let user = "leavism"; in
       experimental-features = nix-command flakes
     '';
   };
-
-  # Turn off NIX_PATH warnings now that we're using flakes
 
   # Load configuration that is shared across systems
   environment.systemPackages = with pkgs; [
@@ -78,4 +76,9 @@ let user = "leavism"; in
       };
     };
   };
+  
+  # Set the computer name
+  #   networking.computerName = deviceName;
+  #   networking.hostName = deviceName;
+  #   networking.localHostName = deviceName;
 }

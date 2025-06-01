@@ -5,9 +5,17 @@ YELLOW='\033[1;33m'
 RED='\033[1;31m'
 NC='\033[0m'
 
-FLAKE="macos"
+# Check if device name was provided
+if [ -z "$1" ]; then
+    echo "${RED}Error: Device name required${NC}"
+    echo "${YELLOW}Usage: nix run .#rollback <device-name>${NC}"
+    echo "${YELLOW}Example: nix run .#rollback odin${NC}"
+    exit 1
+fi
 
-echo "${YELLOW}Available generations:${NC}"
+DEVICE_NAME="$1"
+
+echo "${YELLOW}Available generations for ${DEVICE_NAME}:${NC}"
 /run/current-system/sw/bin/darwin-rebuild --list-generations
 
 echo "${YELLOW}Enter the generation number for rollback:${NC}"
@@ -18,7 +26,7 @@ if [ -z "$GEN_NUM" ]; then
   exit 1
 fi
 
-echo "${YELLOW}Rolling back to generation $GEN_NUM...${NC}"
-/run/current-system/sw/bin/darwin-rebuild switch --flake .#$FLAKE --switch-generation $GEN_NUM
+echo "${YELLOW}Rolling back ${DEVICE_NAME} to generation $GEN_NUM...${NC}"
+/run/current-system/sw/bin/darwin-rebuild switch --flake .#$DEVICE_NAME --switch-generation $GEN_NUM
 
 echo "${GREEN}Rollback to generation $GEN_NUM complete!${NC}"

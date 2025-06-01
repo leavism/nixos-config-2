@@ -27,13 +27,34 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    secrets = {
+      url = "git+ssh://git@github.com/leavism/nix-secrets.git";
+      flake = false;
+    };
   };
-  outputs = { self, darwin, nix-homebrew, homebrew-bundle, homebrew-core, homebrew-cask, home-manager, nixpkgs, disko, agenix } @inputs:
+  outputs = { self, darwin, nix-homebrew, homebrew-bundle, homebrew-core, homebrew-cask, home-manager, nixpkgs, disko, agenix, secrets } @inputs:
     let
-      user = "%USER%";
+      user = "leavism";
       linuxSystems = [ "x86_64-linux" "aarch64-linux" ];
       darwinSystems = [ "aarch64-darwin" "x86_64-darwin" ];
       forAllSystems = f: nixpkgs.lib.genAttrs (linuxSystems ++ darwinSystems) f;
+      
+      # Define your Darwin devices here
+      darwinDevices = {
+        "odin" = {
+          system = "aarch64-darwin";
+          modules = [ ./hosts/darwin/odin ];
+        };
+        "muninn" = {
+          system = "aarch64-darwin";
+          modules = [ ./hosts/darwin/muninn ];
+        };
+        "huginn" = {
+          system = "aarch64-darwin";
+          modules = [ ./hosts/darwin/huginn ];
+        };
+      };
+      
       devShell = system: let pkgs = nixpkgs.legacyPackages.${system}; in {
         default = with pkgs; mkShell {
           nativeBuildInputs = with pkgs; [ bashInteractive git age age-plugin-yubikey ];
@@ -48,7 +69,7 @@
           #!/usr/bin/env bash
           PATH=${nixpkgs.legacyPackages.${system}.git}/bin:$PATH
           echo "Running ${scriptName} for ${system}"
-          exec ${self}/apps/${system}/${scriptName}
+          exec ${self}/apps/${system}/${scriptName} "$@"
         '')}/bin/${scriptName}";
       };
       mkLinuxApps = system: {
@@ -74,10 +95,11 @@
       devShells = forAllSystems devShell;
       apps = nixpkgs.lib.genAttrs linuxSystems mkLinuxApps // nixpkgs.lib.genAttrs darwinSystems mkDarwinApps;
 
-      darwinConfigurations = nixpkgs.lib.genAttrs darwinSystems (system:
+      # Create a Darwin configuration for each device
+      darwinConfigurations = builtins.mapAttrs (deviceName: deviceConfig:
         darwin.lib.darwinSystem {
-          inherit system;
-          specialArgs = inputs;
+          system = deviceConfig.system;
+          specialArgs = inputs // { inherit deviceName; };
           modules = [
             home-manager.darwinModules.home-manager
             nix-homebrew.darwinModules.nix-homebrew
@@ -94,10 +116,10 @@
                 autoMigrate = true;
               };
             }
-            ./hosts/darwin
-          ];
+            ./hosts/darwin/common.nix  # Shared configuration
+          ] ++ deviceConfig.modules;  # Device-specific configuration
         }
-      );
+      ) darwinDevices;
 
       nixosConfigurations = nixpkgs.lib.genAttrs linuxSystems (system: nixpkgs.lib.nixosSystem {
         inherit system;
